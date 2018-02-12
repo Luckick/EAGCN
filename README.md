@@ -15,6 +15,12 @@ Graph Convolution:
 Classification Performance on Tox21 Dataset
 ![Tox21 Classification AUC](./Chart/Tox21_12tasks.png)
 
+ROC-AUC for Classification tasks on HIV and Tox21:
+![](./Chart/AUC.jpeg)
+
+RMSE for Regression tasks on Lipo and Freesolv:
+![](./Chart/RMSE.jpeg)
+
 ## Acknowledgments
 Code is inspired by [GCN](https://github.com/tkipf/gcn) and [conv_qsar_fast](https://github.com/connorcoley/conv_qsar_fast)
 
