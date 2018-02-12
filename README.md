@@ -3,9 +3,11 @@ Implementation of Edge Attention based Multi-relational Graph Convolutional Netw
 
 
 ## Model Structure
-Attention Layer Layer:
+### Attention Layer:
+Element Attention Machanism:
 ![Element Attention Machanism](./Chart/layers.png)
 
+Graph Convolution:
 ![Graph Convolution](./Chart/axw.png)
 
 
