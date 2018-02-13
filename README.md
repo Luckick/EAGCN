@@ -7,32 +7,35 @@ This is a PyTorch implementation of the paper "Edge Attention based Multi-relati
 
 Install pytorch and torchvision. 
 
-## EAGCN model
-
+## Train EAGCN model
 
 ### Dataset
 
 Four benchmark datasets ([Tox21, HIV, Freesolv and Lipophilicity](http://moleculenet.ai/datasets-1)) are utilized in this study to evaluate the predictive performance of built graph convolutional networks.  They are all downloaded from the [MoleculeNet](http://moleculenet.ai/) that hold various benchmark datasets for molecular machine learning.
 
 ### Train the model
-When you train the model, you can tune the parameters in "options" folder.
+Open the folder "eagcn_pytorch".
+
+When you train the model for classification tasks, you can use:
 
     python train.py
 
-### Test the model
+When you train the model for regression tasks, you can use:
+
     python test.py
 
 
 ## Model Structure
-### Attention Layer:
-Element Attention Machanism:
+
+### Edge Attention Layer
+The process to build the weighted adjacency tensor is:
 ![Element Attention Machanism](./Chart/layers.png)
 
-Graph Convolution:
+Edge attention convolution is:
 ![Graph Convolution](./Chart/axw.png)
 
 
-## Experiment Result
+## Experiment Results
 Classification Performance on Tox21 Dataset
 ![Tox21 Classification AUC](./Chart/Tox21_12tasks.png)
 
