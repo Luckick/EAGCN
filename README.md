@@ -33,12 +33,12 @@ When you train the model for regression tasks, you can use:
 The process to build the weighted adjacency tensor is:
 
 <p align="center">
-  <img width="600" src="https://github.com/Luckick/EAGCN/blob/master/Chart/layers.png" width="425"/>
+  <img width="1000" src="https://github.com/Luckick/EAGCN/blob/master/Chart/layers.png" width="425"/>
 </p>
 
 Edge attention convolution is:
 <p align="center">
-  <img width="500" src="https://github.com/Luckick/EAGCN/blob/master/Chart/axw.png" width="425"/>
+  <img width="600" src="https://github.com/Luckick/EAGCN/blob/master/Chart/axw.png" width="425"/>
 </p>
 
 
