@@ -33,12 +33,12 @@ When you train the model for regression tasks, you can use:
 The process to build the weighted adjacency tensor is:
 
 <p align="center">
-  <img width="300" height="200" src="https://github.com/Luckick/EAGCN/blob/master/Chart/layers.png" width="425"/>
+  <img width="600" src="https://github.com/Luckick/EAGCN/blob/master/Chart/layers.png" width="425"/>
 </p>
 
 Edge attention convolution is:
 <p align="center">
-  <img width="300" height="200" src="https://github.com/Luckick/EAGCN/blob/master/Chart/axw.png" width="425"/>
+  <img width="500" src="https://github.com/Luckick/EAGCN/blob/master/Chart/axw.png" width="425"/>
 </p>
 
 
@@ -49,18 +49,18 @@ We adapt two edge attention layers and three fully connected layers for graph cl
 
 ### RMSE for Regression tasks on  Freesolv and Lipo:
 <p align="center">
-  <img width="300" height="200" src="https://github.com/Luckick/EAGCN/blob/master/Chart/RMSE.jpeg" width="425"/>
+  <img width="500" height="300" src="https://github.com/Luckick/EAGCN/blob/master/Chart/RMSE.jpeg" width="425"/>
 </p>
 
 ### ROC-AUC for Classification tasks on HIV and Tox21:
 <p align="center">
-  <img width="300" height="200" src="https://github.com/Luckick/EAGCN/blob/master/Chart/AUC.jpeg" width="425"/>
+  <img width="500" height="300" src="https://github.com/Luckick/EAGCN/blob/master/Chart/AUC.jpeg" width="425"/>
 </p>
 
 
 ### Classification Performance on Tox21 Dataset:
 <p align="center">
-  <img width="300" height="200" src="https://github.com/Luckick/EAGCN/blob/master/Chart/Tox21_12tasks.png" width="425"/>
+  <img width="500" height="300" src="https://github.com/Luckick/EAGCN/blob/master/Chart/Tox21_12tasks.png" width="425"/>
 </p>
 
 ## Acknowledgments
