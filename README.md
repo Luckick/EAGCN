@@ -31,10 +31,10 @@ When you train the model for regression tasks, you can use:
 
 ### Edge Attention Layer
 The process to build the weighted adjacency tensor is:
-![Element Attention Machanism](./Chart/layers.png | width=70)
+![Element Attention Machanism](./Chart/layers.png ){:height="50%" width="50%"}
 
 Edge attention convolution is:
-![Graph Convolution](./Chart/axw.png =250x250)
+![Graph Convolution](./Chart/axw.png ){:height="50%" width="50%"}
 
 
 ## Experiment Results
@@ -43,13 +43,13 @@ We design our experiments with the goals of 1) verifying the improvement of our 
 We adapt two edge attention layers and three fully connected layers for graph classification and regression.
 
 ### RMSE for Regression tasks on  Freesolv and Lipo:
-![](./Chart/RMSE.jpeg)
+![](./Chart/RMSE.jpeg){:height="50%" width="50%"}
 
 ### ROC-AUC for Classification tasks on HIV and Tox21:
-![](./Chart/AUC.jpeg)
+![](./Chart/AUC.jpeg){:height="50%" width="50%"}
 
 ### Classification Performance on Tox21 Dataset:
-![Tox21 Classification AUC](./Chart/Tox21_12tasks.png)
+![Tox21 Classification AUC](./Chart/Tox21_12tasks.png){:height="50%" width="50%"}
 
 ## Acknowledgments
 Code is inspired by [GCN](https://github.com/tkipf/gcn) and [conv_qsar_fast](https://github.com/connorcoley/conv_qsar_fast)
