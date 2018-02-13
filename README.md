@@ -38,15 +38,17 @@ Edge attention convolution is:
 
 
 ## Experiment Results
+Our experiments evaluate the property prediction on standard supervised classification and regression tasks.
+We design our experiments with the goals of 1) verifying the improvement of our method compared with baseline methods, and 2) comparing two different architectures of our method.
+We adapt two edge attention layers and three fully connected layers for graph classification and regression.
 
-
-#### RMSE for Regression tasks on  Freesolv and Lipo:
+### RMSE for Regression tasks on  Freesolv and Lipo:
 ![](./Chart/RMSE.jpeg)
 
 ### ROC-AUC for Classification tasks on HIV and Tox21:
 ![](./Chart/AUC.jpeg)
 
-#### Classification Performance on Tox21 Dataset:
+### Classification Performance on Tox21 Dataset:
 ![Tox21 Classification AUC](./Chart/Tox21_12tasks.png)
 
 ## Acknowledgments
