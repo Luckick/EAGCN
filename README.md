@@ -13,6 +13,8 @@ Install pytorch and torchvision.
 
 Four benchmark datasets ([Tox21, HIV, Freesolv and Lipophilicity](http://moleculenet.ai/datasets-1)) are utilized in this study to evaluate the predictive performance of built graph convolutional networks.  They are all downloaded from the [MoleculeNet](http://moleculenet.ai/) that hold various benchmark datasets for molecular machine learning.
 
+Datasets are also provided in folder "Data".
+
 ### Train the model
 Open the folder "eagcn_pytorch".
 
@@ -22,7 +24,7 @@ When you train the model for classification tasks, you can use:
 
 When you train the model for regression tasks, you can use:
 
-    python test.py
+    python train_reg.py
 
 
 ## Model Structure
@@ -36,15 +38,16 @@ Edge attention convolution is:
 
 
 ## Experiment Results
-Classification Performance on Tox21 Dataset
-![Tox21 Classification AUC](./Chart/Tox21_12tasks.png)
 
-RMSE for Regression tasks on  Freesolv and Lipo:
+
+#### RMSE for Regression tasks on  Freesolv and Lipo:
 ![](./Chart/RMSE.jpeg)
 
-ROC-AUC for Classification tasks on HIV and Tox21:
+### ROC-AUC for Classification tasks on HIV and Tox21:
 ![](./Chart/AUC.jpeg)
 
+#### Classification Performance on Tox21 Dataset:
+![Tox21 Classification AUC](./Chart/Tox21_12tasks.png)
 
 ## Acknowledgments
 Code is inspired by [GCN](https://github.com/tkipf/gcn) and [conv_qsar_fast](https://github.com/connorcoley/conv_qsar_fast)
