@@ -31,10 +31,10 @@ When you train the model for regression tasks, you can use:
 
 ### Edge Attention Layer
 The process to build the weighted adjacency tensor is:
-![Element Attention Machanism](./Chart/layers.png | width=100)
+![Element Attention Machanism](./Chart/layers.png | width=70)
 
 Edge attention convolution is:
-![Graph Convolution](./Chart/axw.png | width=100)
+![Graph Convolution](./Chart/axw.png | width=70)
 
 
 ## Experiment Results
