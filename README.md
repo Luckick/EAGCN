@@ -34,7 +34,7 @@ The process to build the weighted adjacency tensor is:
 ![Element Attention Machanism](./Chart/layers.png | width=70)
 
 Edge attention convolution is:
-![Graph Convolution](./Chart/axw.png | width=70)
+![Graph Convolution](./Chart/axw.png =250x250)
 
 
 ## Experiment Results
