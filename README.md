@@ -1,5 +1,5 @@
 # EAGCN
-Implementation of Edge Attention based Multi-relational Graph Convolutional Networks, which is submitted to KDD 2018
+Implementation of [Edge Attention based Multi-relational Graph Convolutional Networks](https://arxiv.org/pdf/1802.04944.pdf), which is submitted to KDD 2018
 
 
 ## Model Structure
