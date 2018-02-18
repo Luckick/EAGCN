@@ -11,7 +11,16 @@ LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 IntTensor = torch.cuda.IntTensor if use_cuda else torch.IntTensor
 DoubleTensor = torch.cuda.DoubleTensor if use_cuda else torch.DoubleTensor
 
+
 class Concate_GCN(nn.Module):
+    """
+    @ The model used to train concatenate structure model
+    @ Para:
+    n_bfeat: num of types of 1st relation, atom pairs and atom self.
+    n_afeat: length of atom features from RDkit
+    n_sgc{i}_{j}: length of atom features updated by {j}th relation in {i}th layer
+    n_den1 & n_den2: length of molecular feature updated by Dense Layer
+    """
     def __init__(self, n_bfeat, n_afeat, n_sgc1_1, n_sgc1_2, n_sgc1_3, n_sgc1_4, n_sgc1_5,
                  n_sgc2_1, n_sgc2_2, n_sgc2_3, n_sgc2_4, n_sgc2_5,
                  n_den1, n_den2,
@@ -181,6 +190,14 @@ class Concate_GCN(nn.Module):
         return x
 
 class Weighted_GCN(nn.Module):
+    """
+    @ The model used to train weighted sum structure model
+    @ Para:
+    n_bfeat: num of types of 1st relation, atom pairs and atom self.
+    n_afeat: length of atom features from RDkit
+    sum of n_sgc{i}_{j} over j: length of atom features updated by in {i}th layer for each relation.
+    n_den1 & n_den2: length of molecular feature updated by Dense Layer
+    """
     def __init__(self, n_bfeat, n_afeat, n_sgc1_1, n_sgc1_2, n_sgc1_3, n_sgc1_4, n_sgc1_5,
                  n_sgc2_1, n_sgc2_2, n_sgc2_3, n_sgc2_4, n_sgc2_5,
                  n_den1, n_den2,

@@ -24,8 +24,6 @@ class GraphConvolution(Module):
     """
     Simple GCN layer, similar to https://arxiv.org/abs/1609.02907
     """
-    # In pygcn, the input features and adj are matrix format.
-    # Here we have tensor input.
 
     def __init__(self, in_features, out_features, bias=False):
         super(GraphConvolution, self).__init__()
@@ -60,7 +58,7 @@ class GraphConvolution(Module):
 
 class MolFP(Module):
     """
-    Add vectors for atoms to get the Molecular Vector
+    Add node repressentations within a graph to get the representation of graph
     """
 
     def __init__(self, out_features, bias=True):
@@ -93,7 +91,7 @@ class MolFP(Module):
 
 class Dense(Module):
     """
-    Full Connected Layer, take Molecular Vector as input, compressed to target length at final step.
+    Full Connected Layer, take graph representation as input, compressed to target length at final step.
     """
 
     def __init__(self, in_features, out_features, bias=False):
@@ -126,6 +124,10 @@ class Dense(Module):
                + str(self.out_features) + ')'
 
 class AFM_BatchNorm(Module):
+    """
+        For a 3D tensor about atom feature, batch_size * node_num * feature_size
+        Batchnorm along feature_size for atom feature tensor.
+    """
     def __init__(self, num_features, eps = 1e-5, momentum = 0.1, affine = True, bias = True):
         super(AFM_BatchNorm, self).__init__()
         self.bn = nn.BatchNorm1d(num_features, eps, momentum, affine)
@@ -143,7 +145,7 @@ class AFM_BatchNorm(Module):
 
 class Ave_multi_view(Module):
     """
-    Add vectors for atoms to get the Molecular Vector with weight
+    Weighted average the atom features updated by different relations.
     """
 
     def __init__(self, ave_source_num, feature_size, bias=False):
