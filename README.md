@@ -26,7 +26,6 @@ When you train the model for classification tasks, you can use:
 When you train the model for regression tasks, you can use:
 
     python train_reg.py
->>>>>>> origin/master
 
 
 ## Model Structure
