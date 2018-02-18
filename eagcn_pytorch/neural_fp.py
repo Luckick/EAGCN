@@ -1,5 +1,4 @@
-# Generate Graphs and Atom Features Matrix (afm), Adjacent Matrix (adj), and 3-D Bond Feature Tensor (bft)
-# for each molecular.
+# Generate Graphs and Atom Features Matrix (afm), Adjacent Matrix (adj), and relation tensors for each molecule.
 
 import numpy as np
 import rdkit.Chem.AllChem as AllChem
@@ -330,19 +329,6 @@ def molToGraph(rdmol, bondtype_list_order, atomtype_list_order, molecular_attrib
 	graph.num_edges = len(graph.edges)
 	graph.num_nodes = len(graph.nodes)
 	return graph 
-
-def padGraphTensor(old_tensor, new_dsize):
-	'''This function takes an input tensor of dsize x dsize x Nfeatures and pads 
-	up the first two dimensions to new_dsize with zeros as needed'''
-	
-	old_shape = old_tensor.shape
-	new_tensor = np.zeros((new_dsize, new_dsize, old_shape[2]))
-	for i in range(old_shape[0]):
-		for j in range(old_shape[1]):
-			for k in range(old_shape[2]):
-				new_tensor[i, j, k] = old_tensor[i, j, k]
-
-	return new_tensor
 
 def bondAttributes(bond):
 	'''Returns a numpy array of attributes for an RDKit bond
