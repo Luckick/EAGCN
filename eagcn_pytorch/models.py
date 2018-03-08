@@ -139,7 +139,7 @@ class Concate_GCN(nn.Module):
         x1_4 = F.relu(self.att_bn1_4(x1_4))
         x1_4 = F.dropout(x1_4, p=self.dropout, training=self.training)
 
-        A1_5 = self.soft(self.att1_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask) * mask2
+        A1_5 = self.att1_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
         A1_5 = F.softmax(A1_5 + mask, 2) * mask2
         x1_5 = self.gc1_5(A1_5, afms)
         x1_5 = F.relu(self.att_bn1_5(x1_5))
@@ -316,7 +316,7 @@ class Weighted_GCN(nn.Module):
         x1_4 = F.relu(self.att_bn1_4(x1_4))
         x1_4 = F.dropout(x1_4, p=self.dropout, training=self.training) * mask3
 
-        A1_5 = self.soft(self.att1_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask) * mask2
+        A1_5 = self.att1_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
         A1_5 = F.softmax(A1_5 + mask, 2) * mask2
         x1_5 = self.gc1_5(A1_5, afms)
         x1_5 = F.relu(self.att_bn1_5(x1_5))
