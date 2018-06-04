@@ -2,7 +2,7 @@
 
 # EAGCN
 
-This is a PyTorch implementation of the paper "[Edge Attention based Multi-relational Graph Convolutional Networks](https://arxiv.org/pdf/1802.04944.pdf)".
+This is a PyTorch implementation of the paper "[Edge Attention based Multi-relational Graph Convolutional Networks](https://arxiv.org/abs/1802.04944v1)".
 
 ## Installation
 
