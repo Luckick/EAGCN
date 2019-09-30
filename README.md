@@ -2,7 +2,7 @@
 
 # EAGCN
 
-This is a PyTorch implementation of the paper "[Edge Attention based Multi-relational Graph Convolutional Networks](https://arxiv.org/abs/1802.04944v1)".
+This is a PyTorch implementation.
 
 ## Installation
 
@@ -30,7 +30,7 @@ When you train the model for regression tasks, you can use:
 
 ## Model Structure
 
-### Edge Attention Layer
+### Consistent Edge Attention Layer
 The process to build the weighted adjacency tensor is:
 
 <p align="center">
