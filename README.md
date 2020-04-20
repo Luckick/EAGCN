@@ -23,21 +23,21 @@ When you train the model, you can use:
 
     python train.py
 
-support files:
-EAGCN_dataset.py: pre-processing data
-neural_fp.py: from smiles to graph
-layers.py: define layers
-models.py: define models
-utils.py: other tools
+support files:    
+EAGCN_dataset.py: pre-processing data      
+neural_fp.py: from smiles to graph     
+layers.py: define layers     
+models.py: define models     
+utils.py: other tools     
 
 
 ### Visualization Tools
-check_model.py: check parameters (edge attention for each layer).
-mol_to_vec.py: visualize the molecule in 2D space, compare with other molecules which have similiar SMILEs.
-plot.py: show model training process.
-tsnes.py: tsne visualization about atom subtype, also provide umap option.
-kmeans_atomrep.py: kmeans clustering for atom subtype.
-plot_molecule.py: plot single molecule.
+check_model.py: check parameters (edge attention for each layer).     
+mol_to_vec.py: visualize the molecule in 2D space, compare with other molecules which have similiar SMILEs.      
+plot.py: show model training process.      
+tsnes.py: tsne visualization about atom subtype, also provide umap option.     
+kmeans_atomrep.py: kmeans clustering for atom subtype.     
+plot_molecule.py: plot single molecule.     
 
 
 ## Acknowledgments
