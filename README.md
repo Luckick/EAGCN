@@ -19,50 +19,26 @@ Datasets are also provided in folder "Data".
 ### Train the model
 Open the folder "eagcn_pytorch".
 
-When you train the model for classification tasks, you can use:
+When you train the model, you can use:
 
     python train.py
 
-When you train the model for regression tasks, you can use:
-
-    python train_reg.py
-
-
-## Model Structure
-
-### Consistent Edge Attention Layer
-The process to build the weighted adjacency tensor is:
-
-<p align="center">
-  <img width="1000" src="https://github.com/Luckick/EAGCN/blob/master/Chart/layers.png" width="425"/>
-</p>
-
-Edge attention convolution is:
-<p align="center">
-  <img width="600" src="https://github.com/Luckick/EAGCN/blob/master/Chart/axw.png" width="425"/>
-</p>
+support files:
+EAGCN_dataset.py: pre-processing data
+neural_fp.py: from smiles to graph
+layers.py: define layers
+models.py: define models
+utils.py: other tools
 
 
-## Experiment Results
-Our experiments evaluate the property prediction on standard supervised classification and regression tasks.
-We design our experiments with the goals of 1) verifying the improvement of our method compared with baseline methods, and 2) comparing two different architectures of our method.
-We adapt two edge attention layers and three fully connected layers for graph classification and regression.
+### Visualization Tools
+check_model.py: check parameters (edge attention for each layer).
+mol_to_vec.py: visualize the molecule in 2D space, compare with other molecules which have similiar SMILEs.
+plot.py: show model training process.
+tsnes.py: tsne visualization about atom subtype, also provide umap option.
+kmeans_atomrep.py: kmeans clustering for atom subtype.
+plot_molecule.py: plot single molecule.
 
-### RMSE for Regression tasks on  Freesolv and Lipo:
-<p align="center">
-  <img width="500" height="300" src="https://github.com/Luckick/EAGCN/blob/master/Chart/RMSE.jpeg" width="425"/>
-</p>
-
-### ROC-AUC for Classification tasks on HIV and Tox21:
-<p align="center">
-  <img width="500" height="300" src="https://github.com/Luckick/EAGCN/blob/master/Chart/AUC.jpeg" width="425"/>
-</p>
-
-
-### Classification Performance on Tox21 Dataset:
-<p align="center">
-  <img width="500" height="300" src="https://github.com/Luckick/EAGCN/blob/master/Chart/Tox21_12tasks.png" width="425"/>
-</p>
 
 ## Acknowledgments
 Code is inspired by [GCN](https://github.com/tkipf/gcn) and [conv_qsar_fast](https://github.com/connorcoley/conv_qsar_fast)
