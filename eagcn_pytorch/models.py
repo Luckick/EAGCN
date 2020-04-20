@@ -11,8 +11,7 @@ LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
 IntTensor = torch.cuda.IntTensor if use_cuda else torch.IntTensor
 DoubleTensor = torch.cuda.DoubleTensor if use_cuda else torch.DoubleTensor
 
-
-class Concate_GCN(nn.Module):
+class EAGCN(nn.Module):
     """
     @ The model used to train concatenate structure model
     @ Para:
@@ -24,346 +23,496 @@ class Concate_GCN(nn.Module):
     def __init__(self, n_bfeat, n_afeat, n_sgc1_1, n_sgc1_2, n_sgc1_3, n_sgc1_4, n_sgc1_5,
                  n_sgc2_1, n_sgc2_2, n_sgc2_3, n_sgc2_4, n_sgc2_5,
                  n_den1, n_den2,
-                 nclass, dropout, use_att = True, molfp_mode = 'sum'):
-        super(Concate_GCN, self).__init__()
+                 nclass, dropout, structure = 'Concate', molfp_mode = 'sum', pool_num = 5):
+        super(EAGCN, self).__init__()
+        self.use_cuda = torch.cuda.is_available()
+        self.molfp_mode = molfp_mode
 
-        self.ngc1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
-        ngc1 = self.ngc1
-        self.ngc2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
-        ngc2 = self.ngc2
+        if structure == 'Concate' or structure == 'GCN' or structure == 'GAT':
+            self.ngc1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+        elif structure == 'Weighted_sum':
+            outdim_sum_1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc1 = outdim_sum_1
+            n_sgc1_1 = outdim_sum_1
+            n_sgc1_2 = outdim_sum_1
+            n_sgc1_3 = outdim_sum_1
+            n_sgc1_4 = outdim_sum_1
+            n_sgc1_5 = outdim_sum_1
+            outdim_sum_2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+            self.ngc2 = outdim_sum_2
+            n_sgc2_1 = outdim_sum_2
+            n_sgc2_2 = outdim_sum_2
+            n_sgc2_3 = outdim_sum_2
+            n_sgc2_4 = outdim_sum_2
+            n_sgc2_5 = outdim_sum_2
 
-        self.att1_1 = nn.Conv2d(n_bfeat, 1, kernel_size = 1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_2 = nn.Conv2d(5, 1, kernel_size = 1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_3 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_4 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_5 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
+        if structure == 'Concate' or structure == 'Weighted_sum':
+            self.layer1 = GraphConv_Layer(node_feature_in = n_afeat, bond_feature_num = n_bfeat, node_out_1 = n_sgc1_1,
+                                      node_out_2 = n_sgc1_2, node_out_3 = n_sgc1_3, node_out_4 = n_sgc1_4,
+                                      node_out_5 = n_sgc1_5, dropout = dropout, structure = structure)
+            self.layer2 = GraphConv_Layer(node_feature_in = self.ngc1, bond_feature_num = n_bfeat, node_out_1 = n_sgc2_1,
+                                      node_out_2 = n_sgc2_2, node_out_3 = n_sgc2_3, node_out_4 = n_sgc2_4,
+                                      node_out_5 = n_sgc2_5, dropout = dropout, structure = structure)
+            self.layer3 = GraphConv_Layer(node_feature_in=self.ngc2, bond_feature_num=n_bfeat, node_out_1=2*n_sgc2_1,
+                                          node_out_2=2*n_sgc2_2, node_out_3=2*n_sgc2_3, node_out_4=2*n_sgc2_4,
+                                          node_out_5=2*n_sgc2_5, dropout=dropout, structure=structure)
+            self.layer4 = GraphConv_Layer(node_feature_in=2*self.ngc2, bond_feature_num=n_bfeat, node_out_1=2 * n_sgc2_1,
+                                          node_out_2=2 * n_sgc2_2, node_out_3=2 * n_sgc2_3, node_out_4=2 * n_sgc2_4,
+                                          node_out_5=2 * n_sgc2_5, dropout=dropout, structure=structure, last = True)
 
-        self.soft = nn.Softmax(dim=2)
+        elif structure == 'GCN':
+            self.layer1 = Vanilla_GCN(node_feature_in = n_afeat, node_feature_out = self.ngc1, dropout = dropout)
+            self.layer2 = Vanilla_GCN(node_feature_in = self.ngc1, node_feature_out = self.ngc2, dropout = dropout)
+            self.layer3 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=self.ngc2, dropout=dropout)
+            self.layer4 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=2*self.ngc2, dropout=dropout)
 
-        self.att2_1 = nn.Conv2d(n_bfeat, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_2 = nn.Conv2d(5, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_3 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_4 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_5 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
+        elif structure == 'GAT':
+            self.layer1 = GAT(node_feature_in = n_afeat, node_feature_out = self.ngc1, dropout = dropout)
+            self.layer2 = GAT(node_feature_in = self.ngc1, node_feature_out = self.ngc2, dropout = dropout)
+            self.layer3 = GAT(node_feature_in=self.ngc2, node_feature_out=self.ngc2, dropout=dropout)
+            self.layer4 = GAT(node_feature_in=self.ngc2, node_feature_out=2*self.ngc2, dropout=dropout)
 
         # Compress atom representations to mol representation
-        if molfp_mode =='sum':
-            self.molfp1 = MolFP(self.ngc2)
-            self.molfp2 = MolFP(self.ngc2)
-            self.molfp = MolFP(self.ngc2)
+        #self.molfp = MolFP(self.ngc2)
 
-        # Weighted average the mol representations to final mol representation.
-        self.gc1_1 = GraphConvolution(n_afeat, n_sgc1_1, bias=True)
-        self.gc1_2 = GraphConvolution(n_afeat, n_sgc1_2, bias=True)
-        self.gc1_3 = GraphConvolution(n_afeat, n_sgc1_3, bias=True)
-        self.gc1_4 = GraphConvolution(n_afeat, n_sgc1_4, bias=True)
-        self.gc1_5 = GraphConvolution(n_afeat, n_sgc1_5, bias=True)
-
-        self.gc2_1 = GraphConvolution(ngc1, n_sgc2_1, bias=True)
-        self.gc2_2 = GraphConvolution(ngc1, n_sgc2_2, bias=True)
-        self.gc2_3 = GraphConvolution(ngc1, n_sgc2_3, bias=True)
-        self.gc2_4 = GraphConvolution(ngc1, n_sgc2_4, bias=True)
-        self.gc2_5 = GraphConvolution(ngc1, n_sgc2_5, bias=True)
-
-
-        self.den1 = Dense(self.ngc2, n_den1)
+        #self.den1 = Dense(self.ngc2, n_den1)
+        self.den1 = Dense(2*self.ngc2, n_den1)
+        #self.den2 = Dense(n_den1, nclass)
         self.den2 = Dense(n_den1, n_den2)
         self.den3 = Dense(n_den2, nclass)
 
-        if use_cuda:
-            self.att_bn1_1 = AFM_BatchNorm(n_sgc1_1).cuda()
-            self.att_bn1_2 = AFM_BatchNorm(n_sgc1_2).cuda()
-            self.att_bn1_3 = AFM_BatchNorm(n_sgc1_3).cuda()
-            self.att_bn1_4 = AFM_BatchNorm(n_sgc1_4).cuda()
-            self.att_bn1_5 = AFM_BatchNorm(n_sgc1_5).cuda()
-
-            self.att_bn2_1 = AFM_BatchNorm(n_sgc2_1).cuda()
-            self.att_bn2_2 = AFM_BatchNorm(n_sgc2_2).cuda()
-            self.att_bn2_3 = AFM_BatchNorm(n_sgc2_3).cuda()
-            self.att_bn2_4 = AFM_BatchNorm(n_sgc2_4).cuda()
-            self.att_bn2_5 = AFM_BatchNorm(n_sgc2_5).cuda()
-
-            self.molfp_bn = nn.BatchNorm1d(self.ngc2).cuda()
+        if self.use_cuda:
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2).cuda()
+            self.Graph_BN = nn.BatchNorm1d(2*self.ngc2).cuda()
             self.bn_den1 = nn.BatchNorm1d(n_den1).cuda()
             self.bn_den2 = nn.BatchNorm1d(n_den2).cuda()
 
         else:
-            self.att_bn1_1 = AFM_BatchNorm(n_sgc1_1)
-            self.att_bn1_2 = AFM_BatchNorm(n_sgc1_2)
-            self.att_bn1_3 = AFM_BatchNorm(n_sgc1_3)
-            self.att_bn1_4 = AFM_BatchNorm(n_sgc1_4)
-            self.att_bn1_5 = AFM_BatchNorm(n_sgc1_5)
-
-            self.att_bn2_1 = AFM_BatchNorm(n_sgc2_1)
-            self.att_bn2_2 = AFM_BatchNorm(n_sgc2_2)
-            self.att_bn2_3 = AFM_BatchNorm(n_sgc2_3)
-            self.att_bn2_4 = AFM_BatchNorm(n_sgc2_4)
-            self.att_bn2_5 = AFM_BatchNorm(n_sgc2_5)
-
-            self.molfp_bn = nn.BatchNorm1d(self.ngc2)
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2)
+            self.Graph_BN = nn.BatchNorm1d(2*self.ngc2)
             self.bn_den1 = nn.BatchNorm1d(n_den1)
             self.bn_den2 = nn.BatchNorm1d(n_den2)
 
-
+        if self.molfp_mode == 'pool':
+            self.pool1 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, pool_num)
+            #self.pool2 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, 4)
+            self.pool3 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, 1)
         self.dropout = dropout
-        self.use_att = use_att
 
-    def forward(self, adjs, afms, bfts, OrderAtt, AromAtt, ConjAtt, RingAtt): #bfts
-        mask = (1. - adjs) * -1e9
-        mask_blank, _ = adjs.max(dim=2, keepdim=True)
-        mask2 = mask_blank.expand(adjs.data.shape[0], adjs.data.shape[1], adjs.data.shape[2])
-        mask3 = mask_blank.expand(adjs.data.shape[0], adjs.data.shape[1], self.ngc1)
-        mask4 = mask_blank.expand(adjs.data.shape[0], adjs.data.shape[1], self.ngc2)
 
-        A1_1 = self.att1_1(bfts.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_1 = self.soft(A1_1 + mask) * mask2
-        x1_1 = self.gc1_1(A1_1, afms)
-        x1_1 = F.relu(self.att_bn1_1(x1_1))
-        x1_1 = F.dropout(x1_1, p=self.dropout, training=self.training)
+    def forward(self, adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt, size):
+        x1, A = self.layer1(adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer2(adjs, x1, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer3(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer4(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
 
-        A1_2 = self.att1_2(OrderAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_2 = F.softmax(A1_2 + mask, 2) * mask2
-        x1_2 = self.gc1_2(A1_2, afms)
-        x1_2 = F.relu(self.att_bn1_2(x1_2))
-        x1_2 = F.dropout(x1_2, p=self.dropout, training=self.training)
+        #atom_representations = x2.view(-1, 2*self.ngc2).data.cpu()
+        atom_representations = x2.data.cpu()
 
-        A1_3 = self.att1_3(AromAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_3 = F.softmax(A1_3 + mask, 2) * mask2
-        x1_3 = self.gc1_3(A1_3, afms)
-        x1_3 = F.relu(self.att_bn1_3(x1_3))
-        x1_3 = F.dropout(x1_3, p=self.dropout, training=self.training)
+        #x = self.molfp(x2)
 
-        A1_4 = self.att1_4(ConjAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_4 = F.softmax(A1_4 + mask, 2) * mask2
-        x1_4 = self.gc1_4(A1_4, afms)
-        x1_4 = F.relu(self.att_bn1_4(x1_4))
-        x1_4 = F.dropout(x1_4, p=self.dropout, training=self.training)
-
-        A1_5 = self.att1_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_5 = F.softmax(A1_5 + mask, 2) * mask2
-        x1_5 = self.gc1_5(A1_5, afms)
-        x1_5 = F.relu(self.att_bn1_5(x1_5))
-        x1_5 = F.dropout(x1_5, p=self.dropout, training=self.training)
-
-        x1 = torch.cat((x1_1, x1_2, x1_3, x1_4, x1_5), dim=2) * mask3
-
-        A2_1 = F.softmax(self.att2_1(bfts.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask, 2) * mask2
-        x2_1 = self.gc2_1(A2_1, x1)
-        x2_1 = F.relu(self.att_bn2_1(x2_1))
-        x2_1 = F.dropout(x2_1, p=self.dropout, training=self.training)
-
-        A2_2 = F.softmax(self.att2_2(OrderAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask,
-                         2) * mask2
-        x2_2 = self.gc2_2(A2_2, x1)
-        x2_2 = F.relu(self.att_bn2_2(x2_2))
-        x2_2 = F.dropout(x2_2, p=self.dropout, training=self.training)
-
-        A2_3 = self.att2_3(AromAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A2_3 = F.softmax(A2_3 + mask, 2) * mask2
-        x2_3 = self.gc2_3(A2_3, x1)
-        x2_3 = F.relu(self.att_bn2_3(x2_3))
-        x2_3 = F.dropout(x2_3, p=self.dropout, training=self.training)
-
-        A2_4 = F.softmax(self.att2_4(ConjAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask,
-                         2) * mask2
-        x2_4 = self.gc2_4(A2_4, x1)
-        x2_4 = F.relu(self.att_bn2_4(x2_4))
-        x2_4 = F.dropout(x2_4, p=self.dropout, training=self.training)
-
-        A2_5 = F.softmax(self.att2_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask,
-                         2) * mask2
-        x2_5 = self.gc2_5(A2_5, x1)
-        x2_5 = F.relu(self.att_bn2_5(x2_5))
-        x2_5 = F.dropout(x2_5, p=self.dropout, training=self.training)
-
-        x2 = torch.cat((x2_1, x2_2, x2_3, x2_4, x2_5), dim=2) * mask4
-
-        x = self.molfp(x2)
-        x = self.molfp_bn(x)
+        if self.molfp_mode == 'pool':
+            A, x = self.pool1(A, x2)
+            #A, x = self.pool2(A, x)
+            # A, x = self.pool3(A, x)
+            # x = x.squeeze()
+            x = torch.sum(x, 1)
+        else:
+            x = torch.sum(x2, 1)
+            if self.molfp_mode == 'ave':
+                size = size.view(x2.data.shape[0], 1).type(FloatTensor).expand(x2.data.shape[0], x2.data.shape[2])
+                # size = size.view(x3.data.shape[0], 1).type(FloatTensor).expand(x3.data.shape[0], x3.data.shape[2])
+                x = x / size
+        x = self.Graph_BN(x)
 
         x = self.den1(x)
+        #graph_representation = x
         x = F.relu(self.bn_den1(x))
         x = F.dropout(x, p =self.dropout, training=self.training)
         x = self.den2(x)
+        graph_representation = x
         x = F.relu(self.bn_den2(x))
         x = self.den3(x)
-        return x
+        return x, atom_representations, graph_representation
 
-class Weighted_GCN(nn.Module):
+'''
+class EAGCN_6(nn.Module):
     """
-    @ The model used to train weighted sum structure model
+    @ The model used to train concatenate structure model
     @ Para:
     n_bfeat: num of types of 1st relation, atom pairs and atom self.
     n_afeat: length of atom features from RDkit
-    sum of n_sgc{i}_{j} over j: length of atom features updated by in {i}th layer for each relation.
+    n_sgc{i}_{j}: length of atom features updated by {j}th relation in {i}th layer
     n_den1 & n_den2: length of molecular feature updated by Dense Layer
     """
     def __init__(self, n_bfeat, n_afeat, n_sgc1_1, n_sgc1_2, n_sgc1_3, n_sgc1_4, n_sgc1_5,
                  n_sgc2_1, n_sgc2_2, n_sgc2_3, n_sgc2_4, n_sgc2_5,
                  n_den1, n_den2,
-                 nclass, dropout, use_att = True, molfp_mode = 'sum'):
-        super(Weighted_GCN, self).__init__()
+                 nclass, dropout, structure = 'Concate', molfp_mode = 'sum', pool_num = 5):
+        super(EAGCN_6, self).__init__()
+        self.use_cuda = torch.cuda.is_available()
+        self.molfp_mode = molfp_mode
 
-        self.ngc1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
-        ngc1 = self.ngc1
-        self.ngc2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
-        ngc2 = self.ngc2
+        if structure == 'Concate' or structure == 'GCN':
+            self.ngc1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+        elif structure == 'Weighted_sum':
+            outdim_sum_1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc1 = outdim_sum_1
+            n_sgc1_1 = outdim_sum_1
+            n_sgc1_2 = outdim_sum_1
+            n_sgc1_3 = outdim_sum_1
+            n_sgc1_4 = outdim_sum_1
+            n_sgc1_5 = outdim_sum_1
+            outdim_sum_2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+            self.ngc2 = outdim_sum_2
+            n_sgc2_1 = outdim_sum_2
+            n_sgc2_2 = outdim_sum_2
+            n_sgc2_3 = outdim_sum_2
+            n_sgc2_4 = outdim_sum_2
+            n_sgc2_5 = outdim_sum_2
 
-        self.att1_1 = nn.Conv2d(n_bfeat, 1, kernel_size = 1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_2 = nn.Conv2d(5, 1, kernel_size = 1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_3 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_4 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att1_5 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
+        if structure == 'Concate' or structure == 'Weighted_sum':
+            self.layer1 = GraphConv_Layer(node_feature_in = n_afeat, bond_feature_num = n_bfeat, node_out_1 = n_sgc1_1,
+                                      node_out_2 = n_sgc1_2, node_out_3 = n_sgc1_3, node_out_4 = n_sgc1_4,
+                                      node_out_5 = n_sgc1_5, dropout = dropout, structure = structure)
+            self.layer2 = GraphConv_Layer(node_feature_in = self.ngc1, bond_feature_num = n_bfeat, node_out_1 = n_sgc2_1,
+                                      node_out_2 = n_sgc2_2, node_out_3 = n_sgc2_3, node_out_4 = n_sgc2_4,
+                                      node_out_5 = n_sgc2_5, dropout = dropout, structure = structure)
+            self.layer3 = GraphConv_Layer(node_feature_in=self.ngc2, bond_feature_num=n_bfeat, node_out_1=2*n_sgc2_1,
+                                          node_out_2=2*n_sgc2_2, node_out_3=2*n_sgc2_3, node_out_4=2*n_sgc2_4,
+                                          node_out_5=2*n_sgc2_5, dropout=dropout, structure=structure)
+            self.layer4 = GraphConv_Layer(node_feature_in=2*self.ngc2, bond_feature_num=n_bfeat, node_out_1=2 * n_sgc2_1,
+                                          node_out_2=2 * n_sgc2_2, node_out_3=2 * n_sgc2_3, node_out_4=2 * n_sgc2_4,
+                                          node_out_5=2 * n_sgc2_5, dropout=dropout, structure=structure, last = False)
+            self.layer5 = GraphConv_Layer(node_feature_in=2 * self.ngc2, bond_feature_num=n_bfeat,
+                                          node_out_1=4 * n_sgc2_1,
+                                          node_out_2=4 * n_sgc2_2, node_out_3=4 * n_sgc2_3, node_out_4=4 * n_sgc2_4,
+                                          node_out_5=4 * n_sgc2_5, dropout=dropout, structure=structure, last=False)
+            self.layer6 = GraphConv_Layer(node_feature_in=4 * self.ngc2, bond_feature_num=n_bfeat,
+                                          node_out_1=4 * n_sgc2_1,
+                                          node_out_2=4 * n_sgc2_2, node_out_3=4 * n_sgc2_3, node_out_4=4 * n_sgc2_4,
+                                          node_out_5=4 * n_sgc2_5, dropout=dropout, structure=structure, last=True)
 
-        self.soft = nn.Softmax(dim=2)
-
-        self.att2_1 = nn.Conv2d(n_bfeat, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_2 = nn.Conv2d(5, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_3 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_4 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-        self.att2_5 = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
+        elif structure == 'GCN':
+            self.layer1 = Vanilla_GCN(node_feature_in = n_afeat, node_feature_out = self.ngc1, dropout = dropout)
+            self.layer2 = Vanilla_GCN(node_feature_in = self.ngc1, node_feature_out = self.ngc2, dropout = dropout)
+            self.layer3 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=self.ngc2, dropout=dropout)
+            self.layer4 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=2*self.ngc2, dropout=dropout)
 
         # Compress atom representations to mol representation
-        self.molfp1 = MolFP(self.ngc2)  # 132 is the molsize after padding.
-        self.molfp2 = MolFP(self.ngc2)
-        self.molfp = MolFP(self.ngc2)
+        #self.molfp = MolFP(self.ngc2)
 
-        # Weighted average the mol representations to final mol representation.
-        self.gc1_1 = GraphConvolution(n_afeat, ngc1, bias=True)
-        self.gc1_2 = GraphConvolution(n_afeat, ngc1, bias=True)
-        self.gc1_3 = GraphConvolution(n_afeat, ngc1, bias=True)
-        self.gc1_4 = GraphConvolution(n_afeat, ngc1, bias=True)
-        self.gc1_5 = GraphConvolution(n_afeat, ngc1, bias=True)
-
-        self.gc2_1 = GraphConvolution(ngc1, ngc2, bias=True)
-        self.gc2_2 = GraphConvolution(ngc1, ngc2, bias=True)
-        self.gc2_3 = GraphConvolution(ngc1, ngc2, bias=True)
-        self.gc2_4 = GraphConvolution(ngc1, ngc2, bias=True)
-        self.gc2_5 = GraphConvolution(ngc1, ngc2, bias=True)
-
-        self.den1 = Dense(self.ngc2, n_den1)
+        #self.den1 = Dense(self.ngc2, n_den1)
+        self.den1 = Dense(4*self.ngc2, n_den1)
+        #self.den2 = Dense(n_den1, nclass)
         self.den2 = Dense(n_den1, n_den2)
         self.den3 = Dense(n_den2, nclass)
 
-        if use_cuda:
-            self.att_bn1_1 = AFM_BatchNorm(ngc1).cuda()
-            self.att_bn1_2 = AFM_BatchNorm(ngc1).cuda()
-            self.att_bn1_3 = AFM_BatchNorm(ngc1).cuda()
-            self.att_bn1_4 = AFM_BatchNorm(ngc1).cuda()
-            self.att_bn1_5 = AFM_BatchNorm(ngc1).cuda()
-
-            self.att_bn2_1 = AFM_BatchNorm(ngc2).cuda()
-            self.att_bn2_2 = AFM_BatchNorm(ngc2).cuda()
-            self.att_bn2_3 = AFM_BatchNorm(ngc2).cuda()
-            self.att_bn2_4 = AFM_BatchNorm(ngc2).cuda()
-            self.att_bn2_5 = AFM_BatchNorm(ngc2).cuda()
-
-            self.molfp_bn = nn.BatchNorm1d(self.ngc2).cuda()
+        if self.use_cuda:
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2).cuda()
+            self.Graph_BN = nn.BatchNorm1d(4*self.ngc2).cuda()
             self.bn_den1 = nn.BatchNorm1d(n_den1).cuda()
             self.bn_den2 = nn.BatchNorm1d(n_den2).cuda()
 
         else:
-            self.att_bn1_1 = AFM_BatchNorm(ngc1)
-            self.att_bn1_2 = AFM_BatchNorm(ngc1)
-            self.att_bn1_3 = AFM_BatchNorm(ngc1)
-            self.att_bn1_4 = AFM_BatchNorm(ngc1)
-            self.att_bn1_5 = AFM_BatchNorm(ngc1)
-
-            self.att_bn2_1 = AFM_BatchNorm(ngc2)
-            self.att_bn2_2 = AFM_BatchNorm(ngc2)
-            self.att_bn2_3 = AFM_BatchNorm(ngc2)
-            self.att_bn2_4 = AFM_BatchNorm(ngc2)
-            self.att_bn2_5 = AFM_BatchNorm(ngc2)
-
-            self.molfp_bn = nn.BatchNorm1d(self.ngc2)
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2)
+            self.Graph_BN = nn.BatchNorm1d(4*self.ngc2)
             self.bn_den1 = nn.BatchNorm1d(n_den1)
             self.bn_den2 = nn.BatchNorm1d(n_den2)
 
-        self.ave1 = Ave_multi_view(5, self.ngc1)
-        self.ave2 = Ave_multi_view(5, self.ngc2)
-
+        if self.molfp_mode == 'pool':
+            self.pool1 = Diff_Pooling(4 * self.ngc2, 4 * self.ngc2, pool_num)
+            #self.pool2 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, 4)
+            self.pool3 = Diff_Pooling(4 * self.ngc2, 4 * self.ngc2, 1)
         self.dropout = dropout
-        self.use_att = use_att
 
-    def forward(self, adjs, afms, bfts, OrderAtt, AromAtt, ConjAtt, RingAtt): #bfts
-        mask = (1. - adjs) * -1e9
-        mask_blank, _ = adjs.max(dim=2, keepdim=True)
-        mask2 = mask_blank.expand(adjs.data.shape[0], adjs.data.shape[1], adjs.data.shape[2])
-        mask3 = mask_blank.expand(adjs.data.shape[0], adjs.data.shape[1], self.ngc1)
-        mask4 = mask_blank.expand(adjs.data.shape[0], adjs.data.shape[1], self.ngc2)
 
-        A1_1 = self.att1_1(bfts.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_1 = self.soft(A1_1 + mask) * mask2
-        x1_1 = self.gc1_1(A1_1, afms)
-        x1_1 = F.relu(self.att_bn1_1(x1_1))
-        x1_1 = F.dropout(x1_1, p=self.dropout, training=self.training) * mask3
+    def forward(self, adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt, size):
+        x1, A = self.layer1(adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer2(adjs, x1, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer3(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer4(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer5(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer6(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
 
-        A1_2 = self.att1_2(OrderAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_2 = F.softmax(A1_2 + mask, 2) * mask2
-        x1_2 = self.gc1_2(A1_2, afms)
-        x1_2 = F.relu(self.att_bn1_2(x1_2))
-        x1_2 = F.dropout(x1_2, p=self.dropout, training=self.training) * mask3
+        #atom_representations = x2.view(-1, 2*self.ngc2).data.cpu()
+        atom_representations = x2.data.cpu()
 
-        A1_3 = self.att1_3(AromAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_3 = F.softmax(A1_3 + mask, 2) * mask2
-        x1_3 = self.gc1_3(A1_3, afms)
-        x1_3 = F.relu(self.att_bn1_3(x1_3))
-        x1_3 = F.dropout(x1_3, p=self.dropout, training=self.training) * mask3
+        #x = self.molfp(x2)
 
-        A1_4 = self.att1_4(ConjAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_4 = F.softmax(A1_4 + mask, 2) * mask2
-        x1_4 = self.gc1_4(A1_4, afms)
-        x1_4 = F.relu(self.att_bn1_4(x1_4))
-        x1_4 = F.dropout(x1_4, p=self.dropout, training=self.training) * mask3
-
-        A1_5 = self.att1_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A1_5 = F.softmax(A1_5 + mask, 2) * mask2
-        x1_5 = self.gc1_5(A1_5, afms)
-        x1_5 = F.relu(self.att_bn1_5(x1_5))
-        x1_5 = F.dropout(x1_5, p=self.dropout, training=self.training) * mask3
-
-        x1 = torch.stack((x1_1, x1_2, x1_3, x1_4, x1_5), dim=0)
-        x1 = self.ave1(x1)
-
-        A2_1 = F.softmax(self.att2_1(bfts.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask, 2) * mask2
-        x2_1 = self.gc2_1(A2_1, x1)
-        x2_1 = F.relu(self.att_bn2_1(x2_1))
-        x2_1 = F.dropout(x2_1, p=self.dropout, training=self.training) * mask4
-
-        A2_2 = F.softmax(self.att2_2(OrderAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask,
-                         2) * mask2
-        x2_2 = self.gc2_2(A2_2, x1)
-        x2_2 = F.relu(self.att_bn2_2(x2_2))
-        x2_2 = F.dropout(x2_2, p=self.dropout, training=self.training) * mask4
-
-        A2_3 = self.att2_3(AromAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1)
-        A2_3 = F.softmax(A2_3 + mask, 2) * mask2
-        x2_3 = self.gc2_3(A2_3, x1)
-        x2_3 = F.relu(self.att_bn2_3(x2_3))
-        x2_3 = F.dropout(x2_3, p=self.dropout, training=self.training) * mask4
-
-        A2_4 = F.softmax(self.att2_4(ConjAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask,
-                         2) * mask2
-        x2_4 = self.gc2_4(A2_4, x1)
-        x2_4 = F.relu(self.att_bn2_4(x2_4))
-        x2_4 = F.dropout(x2_4, p=self.dropout, training=self.training) * mask4
-
-        A2_5 = F.softmax(self.att2_5(RingAtt.float()).view(adjs.data.shape[0], adjs.data.shape[1], -1) + mask,
-                         2) * mask2
-        x2_5 = self.gc2_5(A2_5, x1)
-        x2_5 = F.relu(self.att_bn2_5(x2_5))
-        x2_5 = F.dropout(x2_5, p=self.dropout, training=self.training) * mask4
-
-        x2 = torch.stack((x2_1, x2_2, x2_3, x2_4, x2_5), dim=0)
-        x2 = self.ave2(x2)
-
-        x = self.molfp(x2)
-        x = self.molfp_bn(x)
+        if self.molfp_mode == 'pool':
+            A, x = self.pool1(A, x2)
+            #A, x = self.pool2(A, x)
+            # A, x = self.pool3(A, x)
+            # x = x.squeeze()
+            x = torch.sum(x, 1)
+        else:
+            x = torch.sum(x2, 1)
+            if self.molfp_mode == 'ave':
+                size = size.view(x2.data.shape[0], 1).type(FloatTensor).expand(x2.data.shape[0], x2.data.shape[2])
+                # size = size.view(x3.data.shape[0], 1).type(FloatTensor).expand(x3.data.shape[0], x3.data.shape[2])
+                x = x / size
+        x = self.Graph_BN(x)
 
         x = self.den1(x)
+        #graph_representation = x
         x = F.relu(self.bn_den1(x))
         x = F.dropout(x, p =self.dropout, training=self.training)
         x = self.den2(x)
+        graph_representation = x
         x = F.relu(self.bn_den2(x))
         x = self.den3(x)
-        return x
+        return x, atom_representations, graph_representation
+
+class EAGCN_res(nn.Module):
+    """
+    @ The model used to train concatenate structure model
+    @ Para:
+    n_bfeat: num of types of 1st relation, atom pairs and atom self.
+    n_afeat: length of atom features from RDkit
+    n_sgc{i}_{j}: length of atom features updated by {j}th relation in {i}th layer
+    n_den1 & n_den2: length of molecular feature updated by Dense Layer
+    """
+    def __init__(self, n_bfeat, n_afeat, n_sgc1_1, n_sgc1_2, n_sgc1_3, n_sgc1_4, n_sgc1_5,
+                 n_sgc2_1, n_sgc2_2, n_sgc2_3, n_sgc2_4, n_sgc2_5,
+                 n_den1, n_den2,
+                 nclass, dropout, structure = 'Concate', molfp_mode = 'sum', pool_num = 5):
+        super(EAGCN_res, self).__init__()
+        self.use_cuda = torch.cuda.is_available()
+        self.molfp_mode = molfp_mode
+
+        if structure == 'Concate' or structure == 'GCN':
+            self.ngc1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+        elif structure == 'Weighted_sum':
+            outdim_sum_1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc1 = outdim_sum_1
+            n_sgc1_1 = outdim_sum_1
+            n_sgc1_2 = outdim_sum_1
+            n_sgc1_3 = outdim_sum_1
+            n_sgc1_4 = outdim_sum_1
+            n_sgc1_5 = outdim_sum_1
+            outdim_sum_2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+            self.ngc2 = outdim_sum_2
+            n_sgc2_1 = outdim_sum_2
+            n_sgc2_2 = outdim_sum_2
+            n_sgc2_3 = outdim_sum_2
+            n_sgc2_4 = outdim_sum_2
+            n_sgc2_5 = outdim_sum_2
+
+        if structure == 'Concate' or structure == 'Weighted_sum':
+            self.layer1 = GraphConv_Layer(node_feature_in = n_afeat, bond_feature_num = n_bfeat, node_out_1 = n_sgc1_1,
+                                      node_out_2 = n_sgc1_2, node_out_3 = n_sgc1_3, node_out_4 = n_sgc1_4,
+                                      node_out_5 = n_sgc1_5, dropout = dropout, structure = structure)
+            self.layer2 = GraphConv_Layer(node_feature_in = self.ngc1, bond_feature_num = n_bfeat, node_out_1 = n_sgc2_1,
+                                      node_out_2 = n_sgc2_2, node_out_3 = n_sgc2_3, node_out_4 = n_sgc2_4,
+                                      node_out_5 = n_sgc2_5, dropout = dropout, structure = structure)
+            self.layer3 = GraphConv_Layer(node_feature_in=self.ngc2, bond_feature_num=n_bfeat, node_out_1=2*n_sgc2_1,
+                                          node_out_2=2*n_sgc2_2, node_out_3=2*n_sgc2_3, node_out_4=2*n_sgc2_4,
+                                          node_out_5=2*n_sgc2_5, dropout=dropout, structure=structure)
+            self.layer4 = GraphConv_Layer(node_feature_in=2*self.ngc2, bond_feature_num=n_bfeat, node_out_1=2 * n_sgc2_1,
+                                          node_out_2=2 * n_sgc2_2, node_out_3=2 * n_sgc2_3, node_out_4=2 * n_sgc2_4,
+                                          node_out_5=2 * n_sgc2_5, dropout=dropout, structure=structure, last = False)
+            self.layer5 = GraphConv_Layer(node_feature_in=2 * self.ngc2, bond_feature_num=n_bfeat,
+                                          node_out_1=2 * n_sgc2_1,
+                                          node_out_2=2 * n_sgc2_2, node_out_3=2 * n_sgc2_3, node_out_4=2 * n_sgc2_4,
+                                          node_out_5=2 * n_sgc2_5, dropout=dropout, structure=structure, last=False)
+            self.layer6 = GraphConv_Layer(node_feature_in=2 * self.ngc2, bond_feature_num=n_bfeat,
+                                          node_out_1=2 * n_sgc2_1,
+                                          node_out_2=2 * n_sgc2_2, node_out_3=2 * n_sgc2_3, node_out_4=2 * n_sgc2_4,
+                                          node_out_5=2 * n_sgc2_5, dropout=dropout, structure=structure, last=True)
+
+        elif structure == 'GCN':
+            self.layer1 = Vanilla_GCN(node_feature_in = n_afeat, node_feature_out = self.ngc1, dropout = dropout)
+            self.layer2 = Vanilla_GCN(node_feature_in = self.ngc1, node_feature_out = self.ngc2, dropout = dropout)
+            self.layer3 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=self.ngc2, dropout=dropout)
+            self.layer4 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=2*self.ngc2, dropout=dropout)
+
+        # Compress atom representations to mol representation
+        #self.molfp = MolFP(self.ngc2)
+
+        #self.den1 = Dense(self.ngc2, n_den1)
+        self.den1 = Dense(2*self.ngc2, n_den1)
+        #self.den2 = Dense(n_den1, nclass)
+        self.den2 = Dense(n_den1, n_den2)
+        self.den3 = Dense(n_den2, nclass)
+
+        if self.use_cuda:
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2).cuda()
+            self.Graph_BN = nn.BatchNorm1d(2*self.ngc2).cuda()
+            self.bn_den1 = nn.BatchNorm1d(n_den1).cuda()
+            self.bn_den2 = nn.BatchNorm1d(n_den2).cuda()
+
+        else:
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2)
+            self.Graph_BN = nn.BatchNorm1d(2*self.ngc2)
+            self.bn_den1 = nn.BatchNorm1d(n_den1)
+            self.bn_den2 = nn.BatchNorm1d(n_den2)
+
+        if self.molfp_mode == 'pool':
+            self.pool1 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, pool_num)
+            #self.pool2 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, 4)
+            self.pool3 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, 1)
+        self.dropout = dropout
+
+
+    def forward(self, adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt, size):
+        x1, A = self.layer1(adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x1, A = self.layer2(adjs, x1, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x1, A = self.layer3(adjs, x1, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer4(adjs, x1, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer5(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer6(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+
+        x2 = x1+ x2
+        #atom_representations = x2.view(-1, 2*self.ngc2).data.cpu()
+        atom_representations = x2.data.cpu()
+
+        #x = self.molfp(x2)
+
+        if self.molfp_mode == 'pool':
+            A, x = self.pool1(A, x2)
+            #A, x = self.pool2(A, x)
+            # A, x = self.pool3(A, x)
+            # x = x.squeeze()
+            x = torch.sum(x, 1)
+        else:
+            x = torch.sum(x2, 1)
+            if self.molfp_mode == 'ave':
+                size = size.view(x2.data.shape[0], 1).type(FloatTensor).expand(x2.data.shape[0], x2.data.shape[2])
+                # size = size.view(x3.data.shape[0], 1).type(FloatTensor).expand(x3.data.shape[0], x3.data.shape[2])
+                x = x / size
+        x = self.Graph_BN(x)
+
+        x = self.den1(x)
+        #graph_representation = x
+        x = F.relu(self.bn_den1(x))
+        x = F.dropout(x, p =self.dropout, training=self.training)
+        x = self.den2(x)
+        graph_representation = x
+        x = F.relu(self.bn_den2(x))
+        x = self.den3(x)
+        return x, atom_representations, graph_representation
+
+
+class EAGCN_pool(nn.Module):
+    """
+    @ The model used to train concatenate structure model
+    @ Para:
+    n_bfeat: num of types of 1st relation, atom pairs and atom self.
+    n_afeat: length of atom features from RDkit
+    n_sgc{i}_{j}: length of atom features updated by {j}th relation in {i}th layer
+    n_den1 & n_den2: length of molecular feature updated by Dense Layer
+    """
+    def __init__(self, n_bfeat, n_afeat, n_sgc1_1, n_sgc1_2, n_sgc1_3, n_sgc1_4, n_sgc1_5,
+                 n_sgc2_1, n_sgc2_2, n_sgc2_3, n_sgc2_4, n_sgc2_5,
+                 n_den1, n_den2,
+                 nclass, dropout, structure = 'Concate', molfp_mode = 'sum', pool_num = 4):
+        super(EAGCN_pool, self).__init__()
+        self.use_cuda = torch.cuda.is_available()
+        self.molfp_mode = molfp_mode
+
+        if structure == 'Concate' or structure == 'GCN':
+            self.ngc1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+        elif structure == 'Weighted_sum':
+            outdim_sum_1 = n_sgc1_1 + n_sgc1_2 + n_sgc1_3 + n_sgc1_4 + n_sgc1_5
+            self.ngc1 = outdim_sum_1
+            n_sgc1_1 = outdim_sum_1
+            n_sgc1_2 = outdim_sum_1
+            n_sgc1_3 = outdim_sum_1
+            n_sgc1_4 = outdim_sum_1
+            n_sgc1_5 = outdim_sum_1
+            outdim_sum_2 = n_sgc2_1 + n_sgc2_2 + n_sgc2_3 + n_sgc2_4 + n_sgc2_5
+            self.ngc2 = outdim_sum_2
+            n_sgc2_1 = outdim_sum_2
+            n_sgc2_2 = outdim_sum_2
+            n_sgc2_3 = outdim_sum_2
+            n_sgc2_4 = outdim_sum_2
+            n_sgc2_5 = outdim_sum_2
+
+        if structure == 'Concate' or structure == 'Weighted_sum':
+            self.layer1 = GraphConv_Layer(node_feature_in = n_afeat, bond_feature_num = n_bfeat, node_out_1 = n_sgc1_1,
+                                      node_out_2 = n_sgc1_2, node_out_3 = n_sgc1_3, node_out_4 = n_sgc1_4,
+                                      node_out_5 = n_sgc1_5, dropout = dropout, structure = structure)
+            self.layer2 = GraphConv_Layer(node_feature_in = self.ngc1, bond_feature_num = n_bfeat, node_out_1 = n_sgc2_1,
+                                      node_out_2 = n_sgc2_2, node_out_3 = n_sgc2_3, node_out_4 = n_sgc2_4,
+                                      node_out_5 = n_sgc2_5, dropout = dropout, structure = structure)
+            self.layer3 = GraphConv_Layer(node_feature_in=self.ngc2, bond_feature_num=n_bfeat, node_out_1=2*n_sgc2_1,
+                                          node_out_2=2*n_sgc2_2, node_out_3=2*n_sgc2_3, node_out_4=2*n_sgc2_4,
+                                          node_out_5=2*n_sgc2_5, dropout=dropout, structure=structure, last = True)
+            # self.layer4 = GraphConv_Layer(node_feature_in=2*self.ngc2, bond_feature_num=n_bfeat, node_out_1=2 * n_sgc2_1,
+            #                               node_out_2=2 * n_sgc2_2, node_out_3=2 * n_sgc2_3, node_out_4=2 * n_sgc2_4,
+            #                               node_out_5=2 * n_sgc2_5, dropout=dropout, structure=structure, last = True)
+
+        elif structure == 'GCN':
+            self.layer1 = Vanilla_GCN(node_feature_in = n_afeat, node_feature_out = self.ngc1, dropout = dropout)
+            self.layer2 = Vanilla_GCN(node_feature_in = self.ngc1, node_feature_out = self.ngc2, dropout = dropout)
+            self.layer3 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=self.ngc2, dropout=dropout)
+            self.layer4 = Vanilla_GCN(node_feature_in=self.ngc2, node_feature_out=2*self.ngc2, dropout=dropout)
+
+        # Compress atom representations to mol representation
+        #self.molfp = MolFP(self.ngc2)
+
+        #self.den1 = Dense(self.ngc2, n_den1)
+        self.den1 = Dense(2*self.ngc2, n_den1)
+        #self.den2 = Dense(n_den1, nclass)
+        self.den2 = Dense(n_den1, n_den2)
+        self.den3 = Dense(n_den2, nclass)
+
+        if self.use_cuda:
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2).cuda()
+            self.Graph_BN = nn.BatchNorm1d(2*self.ngc2).cuda()
+            self.bn_den1 = nn.BatchNorm1d(n_den1).cuda()
+            self.bn_den2 = nn.BatchNorm1d(n_den2).cuda()
+
+        else:
+            #self.Graph_BN = nn.BatchNorm1d(self.ngc2)
+            self.Graph_BN = nn.BatchNorm1d(2*self.ngc2)
+            self.bn_den1 = nn.BatchNorm1d(n_den1)
+            self.bn_den2 = nn.BatchNorm1d(n_den2)
+
+        if self.molfp_mode == 'pool':
+            self.pool1 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, pool_num)
+            self.pool2 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, 1)
+            # self.pool3 = Diff_Pooling(2 * self.ngc2, 2 * self.ngc2, 1)
+        self.dropout = dropout
+
+
+    def forward(self, adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt, size):
+        x1, A = self.layer1(adjs, afms, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer2(adjs, x1, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        x2, A = self.layer3(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+        # x2, A = self.layer4(adjs, x2, TypeAtt, OrderAtt, AromAtt, ConjAtt, RingAtt)
+
+        #atom_representations = x2.view(-1, 2*self.ngc2).data.cpu()
+        atom_representations = x2.data.cpu()
+
+        #x = self.molfp(x2)
+
+        if self.molfp_mode == 'pool':
+            A, x = self.pool1(A, x2)
+            A, x = self.pool2(A, x)
+            # A, x = self.pool3(A, x)
+            # x = x.squeeze()
+            x = torch.sum(x, 1)
+        else:
+            x = torch.sum(x2, 1)
+            if self.molfp_mode == 'ave':
+                size = size.view(x2.data.shape[0], 1).type(FloatTensor).expand(x2.data.shape[0], x2.data.shape[2])
+                # size = size.view(x3.data.shape[0], 1).type(FloatTensor).expand(x3.data.shape[0], x3.data.shape[2])
+                x = x / size
+        x = self.Graph_BN(x)
+
+        x = self.den1(x)
+        #graph_representation = x
+        x = F.relu(self.bn_den1(x))
+        x = F.dropout(x, p =self.dropout, training=self.training)
+        x = self.den2(x)
+        graph_representation = x
+        x = F.relu(self.bn_den2(x))
+        x = self.den3(x)
+        return x, atom_representations, graph_representation
+'''
