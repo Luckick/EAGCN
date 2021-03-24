@@ -2,7 +2,7 @@
 
 # EAGCN
 
-This is a PyTorch implementation of paper "[Multi-View Spectral Graph Convolution with Consistent Edge Attention for Molecular Modeling](https://www.sciencedirect.com/science/article/abs/pii/S092523122100271X)". ( We also provide a previous [arXiv version](https://arxiv.org/abs/1802.04944v1) ).
+This is a PyTorch implementation of paper "[Multi-View Spectral Graph Convolution with Consistent Edge Attention for Molecular Modeling](https://www.sciencedirect.com/science/article/abs/pii/S092523122100271X)" published at Neurocomputing. We also released a previous [arXiv version](https://arxiv.org/abs/1802.04944v1).
 
 ## Installation
 
