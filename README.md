@@ -40,8 +40,22 @@ mol_to_vec.py: visualize the molecule in 2D space, compare with other molecules 
 plot.py: show model training process.      
 tsnes.py: tsne visualization about atom subtype, also provide umap option.     
 kmeans_atomrep.py: kmeans clustering for atom subtype.     
-plot_molecule.py: plot single molecule.     
+plot_molecule.py: plot single molecule.    
 
+## Citation
+
+If you use this repository, e.g., the code and the datasets, in your research, please cite the following paper:
+```
+@article{shang2021multi,
+  title={Multi-view spectral graph convolution with consistent edge attention for molecular modeling},
+  author={Shang, Chao and Liu, Qinqing and Tong, Qianqian and Sun, Jiangwen and Song, Minghu and Bi, Jinbo},
+  journal={Neurocomputing},
+  volume={445},
+  pages={12--25},
+  year={2021},
+  publisher={Elsevier}
+}
+```
 
 ## Acknowledgments
 Code is inspired by [GCN](https://github.com/tkipf/gcn) and [conv_qsar_fast](https://github.com/connorcoley/conv_qsar_fast)
