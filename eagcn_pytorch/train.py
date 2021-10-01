@@ -27,9 +27,10 @@ from EAGCN_dataset import *
 
 model_names = ['Concate', 'Weighted_sum', 'GCN', 'GAT']
 molfp_mode = ['sum', 'ave', 'pool']
+datasets = ['tox21', 'hiv', 'nih', 'lipo', 'esol', 'freesolv']
 
 parser = argparse.ArgumentParser(description='PyTorch EAGCN Training')
-parser.add_argument('dataset', default= 'hiv', help='dataset name')
+parser.add_argument('--dataset', default= 'freesolv', help='dataset name', choices=datasets)
 parser.add_argument('--arch', '-a', metavar='ARCH', default='Concate',
                     choices=model_names,
                     help='model architecture: ' +
@@ -40,29 +41,19 @@ parser.add_argument('--molfp', metavar='FP', default='sum',
                     help='molecule fingure print mode: ' +
                         ' | '.join(molfp_mode) +
                         ' (default: sum)')
-# parser.add_argument('--epochs', default=100, type=int, metavar='N',
-#                     help='number of total epochs to run')
 parser.add_argument('--rs','--random_state', default=0, type=int)
 
 parser.add_argument('-b', '--batch-size', default=32, type=int,
                     metavar='N', help='mini-batch size (default: 32)')
-# parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
-#                     metavar='LR', help='initial learning rate')
-# parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-#                     help='momentum')
-# parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
-#                     metavar='W', help='weight decay (default: 1e-4)')
 parser.add_argument('--dr', '--dropout-rate', default=0.3, type=float,
                     metavar='DR', help='Dropout Rate')
 parser.add_argument('--print-freq', '-p', default=50, type=int,
                      metavar='N', help='print frequency (default: 20)')
 parser.add_argument('-t', '--eval_train_loader', default=False, type=bool)
-# parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-#                     help='evaluate model on validation set')
+
 
 args = parser.parse_args()
 # Training settings
-#dataset = 'tox21'   # 'tox21', 'hiv'
 write_file = True
 n_den1, n_den2= 128, 64
 
@@ -120,8 +111,7 @@ if args.dataset == 'freesolv':
     num_epochs = 1500
     learning_rate = 0.0001
     weight_decay = 0.01 # 0.001
-    if args.dataset == 'freesolv':
-        exp_data = Freesolv()
+    exp_data = Freesolv()
 
 # Early Stopping:
 early_stop_step_single = 3
